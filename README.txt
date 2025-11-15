@@ -3,13 +3,14 @@ Contact Info
 
 Group Members & Email Addresses:
 
-    Person 1, person1@uky.edu
-    Person 2, person2@uky.edu
+    Landan Howard, ltho238@uky.edu
+    Cameron Hunter, N/A
+    Nathan Edwards, cned224@uky.edu
 
 Versioning
 ==========
 
-Github Link: 
+Github Link: https://github.com/nathane28/pongProject
 
 General Info
 ============
