@@ -186,15 +186,12 @@ def joinServer(ip:str, port:str, errorLabel:tk.Label, app:tk.Tk) -> None:
     client.connect((ip, int(port)))
 
     # Get the required information from your server (screen width, height & player paddle, "left or "right)
-    init_data = client.recv(1024).decode().strip().split(",")
-    if len(init_data) != 3:
-        errorLabel.config(text="Invalid data received from server.")
-        errorLabel.update()
-        return
-    
-    screenWidth  = int(init_data[0])
-    screenHeight = int(init_data[1])
-    paddleSide   = init_data[2]   # "left" or "right"
+    raw = client.recv(1024).decode()
+    init_data = json.loads(raw)
+
+    screenWidth  = init_data["screenWidth"]
+    screenHeight = init_data["screenHeight"]
+    paddleSide   = init_data["paddle"]
 
     # If you have messages you'd like to show the user use the errorLabel widget like so
     errorLabel.config(text=f"Some update text. You input: IP: {ip}, Port: {port}")
@@ -203,7 +200,7 @@ def joinServer(ip:str, port:str, errorLabel:tk.Label, app:tk.Tk) -> None:
 
     # Close this window and start the game with the info passed to you from the server
     app.withdraw()     # Hides the window (we'll kill it later)
-    playGame(screenWidth, screenHeight, ("left"|"right"), client)  # User will be either left or right paddle
+    playGame(screenWidth, screenHeight, paddleSide, client)  # User will be either left or right paddle
     app.quit()         # Kills the window
 
 
