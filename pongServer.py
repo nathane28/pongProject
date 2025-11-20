@@ -72,7 +72,8 @@ def handle_client(conn, player_id):
 
             conn.send(json.dumps(msg).encode())
 
-        except:
+        except Exception as e:
+            print(f"SERVER ERROR for player {player_id}: {e}")
             break
 
     conn.close()
