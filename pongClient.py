@@ -94,6 +94,18 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
         }
 
         client.send(json.dumps(msg).encode())
+
+        # Receive updated game state from server
+        try:
+            raw = client.recv(1024)
+            server_data = json.loads(raw.decode())
+            opponentPaddleObj.rect.y = server_data["opponentPaddleY"]
+            ballX = server_data["ballX"]
+            ballY = server_data["ballY"]
+            lScore = server_data["lScore"]
+            rScore = server_data["rScore"]
+        except:
+            pass  # if server drops connection, just continue
         
         # =========================================================================================
 
