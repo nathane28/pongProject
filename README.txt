@@ -3,8 +3,6 @@ Contact Info
 
 Group Members & Email Addresses:
 
-    Landan Howard, ltho238@uky.edu
-    Cameron Hunter, N/A
     Nathan Edwards, cned224@uky.edu
 
 Versioning
