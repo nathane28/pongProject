@@ -11,6 +11,7 @@
 import socket
 import threading
 import json
+import time
 
 # Use this file to write your server logic
 # You will need to support at least two clients
@@ -19,7 +20,7 @@ import json
 # I suggest you use the sync variable in pongClient.py to determine how out of sync your two
 # clients are and take actions to resync the games
 
-# Shared state for both of the two clients
+# Shared game state
 game_state = {
     "leftpaddle": 215,
     "rightpaddle": 215,
@@ -27,85 +28,119 @@ game_state = {
     "ballY": 240,
     "lScore": 0,
     "rScore": 0,
-    "sync": [0,0]   # Sync counters for both the left and right players
+    "sync": [0,0]
 }
 
 clients = [None, None]
+ballVX = 4
+ballVY = 4
+WIDTH, HEIGHT = 640, 480
+PADDLE_HEIGHT = 50
+PADDLE_WIDTH = 10
 
+# -------------------- Handle paddle updates --------------------
 def handle_client(conn, player_id):
     global game_state
-    
-    opponent_id = 1 - player_id
-
     while True:
         try:
             raw = conn.recv(1024)
-
             if not raw:
                 break
-
             data = json.loads(raw.decode())
-
-            # Update player paddles
             if player_id == 0:
                 game_state["leftpaddle"] = data["paddleY"]
             else:
                 game_state["rightpaddle"] = data["paddleY"]
-
-            # Update the sync counter
             game_state["sync"][player_id] = data["sync"]
-
-            # Build message with full game state
-            msg = {
-                "opponentPaddleY": (
-                    game_state["rightpaddle"]
-                    if player_id == 0
-                    else game_state["leftpaddle"]
-                ),
-
-                "ballX": game_state["ballX"],
-                "ballY": game_state["ballY"],
-                "lScore": game_state["lScore"],
-                "rScore": game_state["rScore"],
-                "syncOpp": game_state["sync"][opponent_id]
-            }
-
-            conn.send(json.dumps(msg).encode())
-
         except Exception as e:
-            print(f"SERVER ERROR for player {player_id}: {e}")
+            print(f"SERVER ERROR player {player_id}: {e}")
             break
-
     conn.close()
+    clients[player_id] = None
 
-def main():
-    # Create IPv4 TCP socket
-    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+# -------------------- Broadcast to clients --------------------
+def broadcast(msg):
+    for i, c in enumerate(clients):
+        if c:
+            try:
+                c.send(json.dumps(msg).encode())
+            except:
+                clients[i] = None
 
-    server.bind(("0.0.0.0", 5000))   # bind to localhost:5000
-    server.listen(2)                 # listen for 2 connections
+# -------------------- Server game loop --------------------
+def server_game_loop():
+    global game_state, ballVX, ballVY
+    while True:
+        # Update ball
+        game_state["ballX"] += ballVX
+        game_state["ballY"] += ballVY
 
-    print("Server running on port 5000. Waiting for 2 connections...")
+        # Top/bottom collision
+        if game_state["ballY"] <= 0 or game_state["ballY"] >= HEIGHT:
+            ballVY = -ballVY
 
-    for i in range(2):
+        # Left paddle collision
+        if game_state["ballX"] <= PADDLE_WIDTH + 10:
+            if game_state["leftpaddle"] <= game_state["ballY"] <= game_state["leftpaddle"] + PADDLE_HEIGHT:
+                ballVX = -ballVX
+            else:
+                game_state["rScore"] += 1
+                reset_ball()
+
+        # Right paddle collision
+        if game_state["ballX"] >= WIDTH - PADDLE_WIDTH - 10:
+            if game_state["rightpaddle"] <= game_state["ballY"] <= game_state["rightpaddle"] + PADDLE_HEIGHT:
+                ballVX = -ballVX
+            else:
+                game_state["lScore"] += 1
+                reset_ball()
+
+        # Broadcast updated state
+        broadcast(game_state)
+        time.sleep(1/60)  # 60 FPS
+
+def reset_ball():
+    global game_state, ballVX, ballVY
+    game_state["ballX"] = WIDTH // 2
+    game_state["ballY"] = HEIGHT // 2
+    ballVX = -ballVX
+    ballVY = 4
+
+# -------------------- Accept clients --------------------
+def accept_clients(server):
+    i = 0
+    while i < 2:
         conn, addr = server.accept()
         clients[i] = conn
         print(f"Player {i+1} connected: {addr}")
 
-        # Initial message that is printed
         initial_message = {
             "type": "init",
             "paddle": "left" if i == 0 else "right",
-            "screenWidth": 640,
-            "screenHeight": 480
+            "screenWidth": WIDTH,
+            "screenHeight": HEIGHT
         }
-
         conn.send(json.dumps(initial_message).encode())
 
-    # Start the threads
-    for i in range(2):
-        t = threading.Thread(target=handle_client, args=(clients[i], i))
-        t.start()
+        threading.Thread(target=handle_client, args=(conn, i), daemon=True).start()
+        i += 1
+
+# -------------------- Main --------------------
+def main():
+    server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server.bind(("0.0.0.0", 5000))
+    server.listen(2)
+    print("Server running on port 5000. Waiting for 2 connections...")
+
+    # Accept clients
+    accept_clients(server)
+
+    # Start server game loop
+    threading.Thread(target=server_game_loop, daemon=True).start()
+
+    # Keep server alive
+    while True:
+        time.sleep(1)
 
 if __name__ == "__main__":
     main()
