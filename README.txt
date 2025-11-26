@@ -35,6 +35,7 @@ Run the following line to install the required libraries for this project:
 
 Known Bugs
 ==========
-
+- Not sure if clients can even play against each other in the same game, etc.
+- Terminal that launches the server side code never exits, and has to be restarted every time a new game wants to be played, or the server needs to be re-launched
 
 
