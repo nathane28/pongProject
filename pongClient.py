@@ -83,78 +83,90 @@ def playGame(screenWidth:int, screenHeight:int, playerPaddle:str, client:socket.
             elif event.type == pygame.KEYUP:
                 playerPaddleObj.moving = ""
 
-        # =========================================================================================
-        # Your code here to send an update to the server on your paddle's information,
-        # where the ball is and the current score.
-        # Feel free to change when the score is updated to suit your needs/requirements
+    # =========================================================================================
+    # Your code here to send an update to the server on your paddle's information,
+    # where the ball is and the current score.
+    # Feel free to change when the score is updated to suit your needs/requirements
+    
+    # Author: Nathan Edwards
+    # Purpose: This set of code is to update the server on certain conditions of the client in the game which include the paddle position,
+    #          ball position, and the current score of the game. 
+    # Pre-Conditions: Some pre-conditions could include that the client is connected to the server sucessfully along with the sync counter existing
+    #                 in the first place. The server running correctly and expecting information being sent from the client could technically be 
+    #                 considered a pre-condition in this case.
+    # Post-Conditions: Post-conditions would include that the server has recieved the update from the client and updated the game state, etc. based
+    #                  off of the information that was recieved from the client.
+
+    msg = {
+        "paddleY": playerPaddleObj.rect.y,  # Current paddle position of the client
+        "sync": sync
+    }
+
+    # json message is sent to the server from the client
+    client.send(json.dumps(msg).encode())
+
+    # Receive updated game state from server
+    try:
+        raw = client.recv(1024)
+        server_data = json.loads(raw.decode())  # Decode the message
+
+        # Update all of the variables which include opponent paddle position, ball X & Y position, and the left & right score
+        opponentPaddleObj.rect.y = server_data["opponentPaddleY"]
+        ballX = server_data["ballX"]
+        ballY = server_data["ballY"]
+        lScore = server_data["lScore"]
+        rScore = server_data["rScore"]
+    except:
+        pass  # if server crashes
         
-        msg = {
-            "paddleY": playerPaddleObj.rect.y,
-            "sync": sync
-        }
+    # =========================================================================================
 
-        client.send(json.dumps(msg).encode())
+    # Update the player paddle and opponent paddle's location on the screen
+    for paddle in [playerPaddleObj, opponentPaddleObj]:
+        if paddle.moving == "down":
+            if paddle.rect.bottomleft[1] < screenHeight-10:
+                paddle.rect.y += paddle.speed
+        elif paddle.moving == "up":
+            if paddle.rect.topleft[1] > 10:
+                paddle.rect.y -= paddle.speed
 
-        # Receive updated game state from server
-        try:
-            raw = client.recv(1024)
-            server_data = json.loads(raw.decode())
-            opponentPaddleObj.rect.y = server_data["opponentPaddleY"]
-            ballX = server_data["ballX"]
-            ballY = server_data["ballY"]
-            lScore = server_data["lScore"]
-            rScore = server_data["rScore"]
-        except:
-            pass  # if server drops connection, just continue
-        
-        # =========================================================================================
+    # If the game is over, display the win message
+    if lScore > 4 or rScore > 4:
+        winText = "Player 1 Wins! " if lScore > 4 else "Player 2 Wins! "
+        textSurface = winFont.render(winText, False, WHITE, (0,0,0))
+        textRect = textSurface.get_rect()
+        textRect.center = ((screenWidth/2), screenHeight/2)
+        winMessage = screen.blit(textSurface, textRect)
+    else:
 
-        # Update the player paddle and opponent paddle's location on the screen
-        for paddle in [playerPaddleObj, opponentPaddleObj]:
-            if paddle.moving == "down":
-                if paddle.rect.bottomleft[1] < screenHeight-10:
-                    paddle.rect.y += paddle.speed
-            elif paddle.moving == "up":
-                if paddle.rect.topleft[1] > 10:
-                    paddle.rect.y -= paddle.speed
+        # ==== Ball Logic =====================================================================
+        ball.updatePos()
 
-        # If the game is over, display the win message
-        if lScore > 4 or rScore > 4:
-            winText = "Player 1 Wins! " if lScore > 4 else "Player 2 Wins! "
-            textSurface = winFont.render(winText, False, WHITE, (0,0,0))
-            textRect = textSurface.get_rect()
-            textRect.center = ((screenWidth/2), screenHeight/2)
-            winMessage = screen.blit(textSurface, textRect)
-        else:
-
-            # ==== Ball Logic =====================================================================
-            ball.updatePos()
-
-            # If the ball makes it past the edge of the screen, update score, etc.
-            if ball.rect.x > screenWidth:
-                lScore += 1
-                pointSound.play()
-                ball.reset(nowGoing="left")
-            elif ball.rect.x < 0:
-                rScore += 1
-                pointSound.play()
-                ball.reset(nowGoing="right")
+        # If the ball makes it past the edge of the screen, update score, etc.
+        if ball.rect.x > screenWidth:
+            lScore += 1
+            pointSound.play()
+            ball.reset(nowGoing="left")
+        elif ball.rect.x < 0:
+            rScore += 1
+            pointSound.play()
+            ball.reset(nowGoing="right")
                 
-            # If the ball hits a paddle
-            if ball.rect.colliderect(playerPaddleObj.rect):
-                bounceSound.play()
-                ball.hitPaddle(playerPaddleObj.rect.center[1])
-            elif ball.rect.colliderect(opponentPaddleObj.rect):
-                bounceSound.play()
-                ball.hitPaddle(opponentPaddleObj.rect.center[1])
+        # If the ball hits a paddle
+        if ball.rect.colliderect(playerPaddleObj.rect):
+            bounceSound.play()
+            ball.hitPaddle(playerPaddleObj.rect.center[1])
+        elif ball.rect.colliderect(opponentPaddleObj.rect):
+            bounceSound.play()
+            ball.hitPaddle(opponentPaddleObj.rect.center[1])
                 
-            # If the ball hits a wall
-            if ball.rect.colliderect(topWall) or ball.rect.colliderect(bottomWall):
-                bounceSound.play()
-                ball.hitWall()
+        # If the ball hits a wall
+        if ball.rect.colliderect(topWall) or ball.rect.colliderect(bottomWall):
+            bounceSound.play()
+            ball.hitWall()
             
-            pygame.draw.rect(screen, WHITE, ball)
-            # ==== End Ball Logic =================================================================
+        pygame.draw.rect(screen, WHITE, ball)
+        # ==== End Ball Logic =================================================================
 
         # Drawing the dotted line in the center
         for i in centerLine:
@@ -195,10 +207,10 @@ def joinServer(ip:str, port:str, errorLabel:tk.Label, app:tk.Tk) -> None:
     # Create a socket and connect to the server
     # You don't have to use SOCK_STREAM, use what you think is best
     client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    client.connect((ip, int(port)))
+    client.connect((ip, int(port))) # Client connects to the server
 
-    # Get the required information from your server (screen width, height & player paddle, "left or "right)
-    raw = client.recv(1024).decode()
+    # Get the required information from the server which includes screenWidth, screenHeight, and paddleSide
+    raw = client.recv(1024).decode()    # Decode the message
     init_data = json.loads(raw)
 
     screenWidth  = init_data["screenWidth"]
