@@ -12,6 +12,7 @@ import socket
 import threading
 import json
 import time
+from typing import Any, Dict
 
 # Use this file to write your server logic
 # You will need to support at least two clients
@@ -49,6 +50,7 @@ PADDLE_WIDTH = 10
 #                 along with the player_id.
 # Post-Conditions: The server game_state is updated as a post-condition based on the data that is recieved from the clients, as well as the chance
 #                  that there is a network server error
+# def handle_client(conn: socket.socket(), player_id: int) -> None:
 def handle_client(conn, player_id):
     global game_state
 
@@ -85,6 +87,7 @@ def handle_client(conn, player_id):
 #                 effectively.
 # Post-Conditions: All of the clients recieve the messages that are "broadcasted", ensuring that the game between the two clients stay as 
 #                  synchronized as possible, etc.
+# def broadcast(msg: Dict[str, Any]) -> None:
 def broadcast(msg):
     for i, c in enumerate(clients):
         if c:
@@ -93,18 +96,12 @@ def broadcast(msg):
             except:
                 clients[i] = None
 
-# -------------------------------------------------------------------------------------------------
-# server_game_loop()
-# This is the HEART of the server.
-# Runs 60 times per second.
-# Moves the ball, checks for scoring, paddle hits, wall hits, and sends updates.
-# -------------------------------------------------------------------------------------------------
-
 # Author: Nathan Edwards
 # Purpose: Main loop of the server used to update the game state allowing the game to sucessfully continue between the two clients.
 # Pre-Conditions: Game_state is initilialized and valid, with all of the values regarding the ball and paddles are all correct and error free.
 # Post-Conditions: All of the values regarding the ball and paddles are updated, along with the potential score based on the actions of the two
 #                  clients playing in the game.
+# def server_game_loop() -> None:
 def server_game_loop():
     global game_state, ballVX, ballVY
 
@@ -141,6 +138,7 @@ def server_game_loop():
 #          against each other
 # Pre-Conditions: The game_state is valid and a point is scored by one of the clients playing in the game
 # Post-Conditions: The ball is reset and placed back into the center of the screen
+# def reset_ball() -> None:
 def reset_ball():
     global game_state, ballVX, ballVY
 
@@ -156,6 +154,7 @@ def reset_ball():
 # Pre-Conditions: The two clients are connecting or already connected to the server through the correct IP address and port
 # Post-Conditions: Both of the clients are successfully connected to the server, each assigned a side/paddle for the game, and are completely ready 
 #                  to start the game and play against each other, etc.
+# def accept_clients(server: socket.socket) -> None:
 def accept_clients(server):
     i = 0
 
@@ -192,6 +191,7 @@ def accept_clients(server):
 # Post-Conditions: The server is fully operational, and is ready to start the game, the clients are connected, and everything is operating smoothly
 #                  for the clients to begin playing, and for them to be able to communicate between the server and themselves smoothly the entirety
 #                  of the game.
+# def main() -> None:
 def main():
     server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # Create the socket
     server.bind(("0.0.0.0", 5000))                              # Bind to the local host, port 5000
